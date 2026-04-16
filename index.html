@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCRLearning — Document OCR</title>
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#3B82F6" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="OCRLearning" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <style>
+    .drop-divider { color:#9CA3AF; font-size:0.72rem; margin:0.9rem 0 0.5rem; letter-spacing:0.05em; }
+    .btn-camera {
+      display:inline-flex; align-items:center; gap:0.45rem;
+      background:#fff; border:1.5px solid #D1D5DB; color:#374151;
+      border-radius:30px; font-weight:700; font-size:0.875rem;
+      padding:0.6rem 2rem; cursor:pointer; font-family:inherit;
+      transition:border-color 0.15s, color 0.15s;
+    }
+    .btn-camera:hover { border-color:#3B82F6; color:#3B82F6; }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- html-docx-js for DOCX export -->
+  <script src="https://cdn.jsdelivr.net/npm/html-docx-js@0.3.1/dist/html-docx.js"></script>
+  <!-- marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+</head>
+<body>
+
+  <!-- ===== API KEY MODAL ===== -->
+  <div class="modal-overlay" id="apiKeyModal">
+    <div class="modal">
+      <div class="modal-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+          <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+            stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h2>Mistral API Key</h2>
+      <p>Stored locally in your browser. Never sent anywhere except Mistral's API.</p>
+      <div class="input-wrap">
+        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+        <button class="btn-eye" id="toggleKeyVisibility" title="Show / Hide">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="#9CA3AF" stroke-width="2"/>
+            <circle cx="12" cy="12" r="3" stroke="#9CA3AF" stroke-width="2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-primary full-w" id="saveApiKey">Save &amp; continue</button>
+        <a href="https://console.mistral.ai/api-keys/" target="_blank" rel="noopener" class="modal-link">Get a Mistral API key →</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOC MODAL ===== -->
+  <div class="modal-overlay hidden" id="tocModal">
+    <div class="modal toc-modal">
+      <div class="toc-header">
+        <h2>Table of Contents</h2>
+        <button class="toc-close-btn" id="closeTocBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M6 18L18 6M6 6l12 12" stroke="#6B7280" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="toc-body" id="tocContent">
+        <p class="toc-empty">No headings found. Apply H1/H2/H3 styles in the editor first.</p>
+      </div>
+      <div class="toc-footer">
+        <button class="btn-outline btn-sm" id="closeTocFooterBtn">Close</button>
+        <button class="btn-primary btn-sm" id="insertTocBtn">Insert at document start</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <div class="logo-mark">
+          <div class="logo-tl"></div><div class="logo-tr"></div>
+          <div class="logo-bl"></div><div class="logo-br"></div>
+        </div>
+        <span>OCRLearning</span>
+      </div>
+      <div class="nav-actions">
+        <button class="btn-outline btn-sm hidden" id="newAnalysisBtn">← New analysis</button>
+        <button class="btn-key-edit" id="editApiKey">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          API Key
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===== UPLOAD SECTION ===== -->
+  <div id="uploadSection" class="upload-section">
+    <div class="upload-card">
+      <div class="upload-banner">UPLOAD &amp; ORGANISE DOCUMENT</div>
+      <div class="upload-body">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" hidden
+            accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.webp,.gif,.bmp" />
+          <div class="drop-cloud">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+              <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                stroke="#3B82F6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <p class="drop-title">Drop your documents here</p>
+          <p class="drop-hint">PDF, PNG, JPG up to 50MB</p>
+          <button class="btn-browse" id="browseBtn">Browse Files</button>
+          <p class="drop-divider">— or —</p>
+          <button class="btn-camera" id="cameraBtn">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="13" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Take a photo
+          </button>
+          <input type="file" id="cameraInput" hidden accept="image/*" capture="environment" />
+        </div>
+        <div class="upload-loading" id="uploadLoading">
+          <div class="spinner"></div>
+          <p>OCR analysis in progress…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WORKSPACE ===== -->
+  <div id="workspaceSection" class="workspace hidden">
+
+    <!-- DUAL PANELS -->
+    <div class="panels">
+
+      <!-- LEFT — Source (PDF / Image) -->
+      <div class="panel">
+        <div class="panel-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+              stroke="#6B7280" stroke-width="2"/>
+          </svg>
+          Source
+        </div>
+        <div class="panel-body" id="sourcePanel">
+          <div class="source-inner">
+            <canvas id="pdfCanvas"></canvas>
+            <img id="imgPreview" alt="Document preview" />
+          </div>
+          <div class="panel-spinner hidden" id="pdfLoading">
+            <div class="spinner-sm"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!-- RIGHT — Output (editable) -->
+      <div class="panel">
+        <div class="panel-label">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+            <path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Output
+          <span class="editable-badge">editable</span>
+        </div>
+
+        <!-- TOOLBAR — above the output editor -->
+        <div class="toolbar">
+          <!-- Block format -->
+          <div class="toolbar-group">
+            <button class="fmt-btn" data-block="p" title="Normal paragraph">¶</button>
+            <button class="fmt-btn fw-bold" data-block="h1" title="Heading 1">H1</button>
+            <button class="fmt-btn fw-bold" data-block="h2" title="Heading 2">H2</button>
+            <button class="fmt-btn fw-bold" data-block="h3" title="Heading 3">H3</button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <!-- Inline format -->
+          <div class="toolbar-group">
+            <button class="fmt-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+            <button class="fmt-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <!-- Highlight -->
+          <div class="toolbar-group">
+            <span class="hl-label">Highlight</span>
+            <button class="hl-swatch" data-color="#FEF08A" style="background:#FEF08A" title="Yellow"></button>
+            <button class="hl-swatch" data-color="#BBF7D0" style="background:#BBF7D0" title="Green"></button>
+            <button class="hl-swatch" data-color="#BFDBFE" style="background:#BFDBFE" title="Blue"></button>
+            <button class="hl-swatch" data-color="#FCA5A5" style="background:#FCA5A5" title="Red"></button>
+            <button class="hl-swatch hl-remove" data-color="" title="Remove highlight">✕</button>
+          </div>
+          <div class="toolbar-sep"></div>
+          <!-- Actions -->
+          <button class="toolbar-action-btn" id="tocBtn" title="Generate Table of Contents">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+              <path d="M4 6h16M4 10h16M4 14h8M4 18h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            TOC
+          </button>
+          <button class="toolbar-action-btn" id="cutToEndBtn" title="Supprimer depuis le curseur jusqu'à la fin de la page">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M6 12h12M12 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Couper fin
+          </button>
+          <button class="toolbar-action-btn export-btn" id="exportDocxBtn" title="Download as Word (.docx)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Download .docx
+          </button>
+        </div>
+
+        <div class="panel-body">
+          <div id="editor" contenteditable="true" spellcheck="false"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SHARED PAGE NAVIGATION -->
+    <div class="page-nav">
+      <button class="nav-btn" id="prevBtn" disabled>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M15 19l-7-7 7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Prev
+      </button>
+      <span class="page-counter">
+        Page <input type="number" id="currentPageEl" value="1" min="1" class="page-input" title="Entrer un numéro de page puis Entrée" /> / <span id="totalPagesEl">1</span>
+      </span>
+      <button class="nav-btn" id="nextBtn" disabled>
+        Next
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+  <script>
+    /* PWA — Service Worker */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    }
+    /* Camera button → handleFile() (same pipeline as Browse) */
+    document.getElementById('cameraBtn').addEventListener('click', () =>
+      document.getElementById('cameraInput').click()
+    );
+    document.getElementById('cameraInput').addEventListener('change', function () {
+      if (this.files[0]) handleFile(this.files[0]);
+    });
+  </script>
+</body>
+</html>

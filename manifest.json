@@ -1,0 +1,21 @@
+{
+  "name": "OCRLearning",
+  "short_name": "OCRLearning",
+  "description": "Document OCR with Mistral AI — 100 % client-side",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F0F6FF",
+  "theme_color": "#3B82F6",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}
