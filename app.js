@@ -163,7 +163,6 @@ async function handleFile(file) {
     workspace.classList.remove('hidden');
     newAnalysisBtn.classList.remove('hidden');
 
-    editor.innerHTML = ''; // reset avant navigateTo pour ne pas capturer le placeholder
     navigateTo(0);
     showToast(`OCR complete · ${totalPages} page(s) extracted.`, 'ok');
 
@@ -448,7 +447,8 @@ function saveCurrentPage() {
 }
 
 function navigateTo(idx) {
-  saveCurrentPage();
+  // Ne sauvegarder que si on change réellement de page
+  if (idx !== currentPage) saveCurrentPage();
   currentPage = Math.max(0, Math.min(idx, totalPages - 1));
 
   // Source panel
