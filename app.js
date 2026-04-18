@@ -288,7 +288,15 @@ function cleanPageNumbers(md) {
       let j   = footStart - 1;
       while (j >= 0 && !lines[j].trim()) j--;
       if (j >= 0 && isSep(lines[j])) cut = j;
-      cutAt = cut;
+
+      // Safety: only cut if the body before the footnote block represents
+      // at least 30% of total non-empty lines. This prevents Phase 3 from
+      // wiping TOC pages where ALL entries look like numbered refs.
+      const totalNonEmpty = lines.filter(l => l.trim()).length;
+      const bodyNonEmpty  = lines.slice(0, cut).filter(l => l.trim()).length;
+      if (totalNonEmpty === 0 || bodyNonEmpty >= Math.ceil(totalNonEmpty * 0.3)) {
+        cutAt = cut;
+      }
     }
   }
 
