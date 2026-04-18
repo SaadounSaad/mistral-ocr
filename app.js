@@ -132,6 +132,7 @@ async function handleFile(file) {
     // Call Mistral OCR
     const result = await callMistralOCR(apiKey, dataURI, file.type);
     const rawPages = Array.isArray(result.pages) ? result.pages : [];
+    window._raw = rawPages; // DEBUG — console: _raw[3].markdown
     pages = rawPages.map(p => ({
       markdown:   cleanPageNumbers(p.markdown || ''),
       editedHtml: null,
