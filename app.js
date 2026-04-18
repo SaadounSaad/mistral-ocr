@@ -132,7 +132,6 @@ async function handleFile(file) {
     // Call Mistral OCR
     const result = await callMistralOCR(apiKey, dataURI, file.type);
     const rawPages = Array.isArray(result.pages) ? result.pages : [];
-    window._raw = rawPages; // DEBUG — console: _raw[3].markdown
     pages = rawPages.map(p => ({
       markdown:   cleanPageNumbers(p.markdown || ''),
       editedHtml: null,
@@ -249,7 +248,8 @@ function cleanPageNumbers(md) {
     return t.length >= 2 && /^[-—–\u2015_─━═\u2500-\u257F]+$/.test(t);
   };
   // isRef: numbered footnote reference — (1), 1., [1], (١), ١. etc.
-  const isRef = s => /^[ \t]*[\(\[]?\p{Nd}+[\)\].]\s/u.test(s);
+  // Max 2 digits: footnotes are never > 99; 3-digit numbers are TOC page refs.
+  const isRef = s => /^[ \t]*[\(\[]?\p{Nd}{1,2}[\)\].]\s/u.test(s);
 
   const lines = result.split('\n');
   let cutAt = -1;
