@@ -163,6 +163,7 @@ async function handleFile(file) {
     workspace.classList.remove('hidden');
     newAnalysisBtn.classList.remove('hidden');
 
+    editor.innerHTML = ''; // reset avant navigateTo pour ne pas capturer le placeholder
     navigateTo(0);
     showToast(`OCR complete · ${totalPages} page(s) extracted.`, 'ok');
 
